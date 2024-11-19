@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+
+train_data = pd.read_csv('train.csv', delimiter=';')
+test_data = pd.read_csv('test.csv', delimiter=';')
+
+train_data.columns = train_data.columns.str.strip()
+test_data.columns = test_data.columns.str.strip()
+
+print("欄位名稱：", list(train_data.columns))
+print("欄位名稱：", list(test_data.columns))
+
+# 檢查是否有缺失值
+print("缺失值檢查：")
+print(train_data.isnull().sum())
+print(test_data.isnull().sum())
+
+features = ['age', 'job', 'marital', 'education', 'loan']
+sns.set(style="whitegrid")  # Set seaborn style
+fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(15, 18))
+axes = axes.flatten()
+
+for i, feature in enumerate(features):
+    if feature == 'age':  # For continuous variable 'age', group into bins
+        train_data['age_group'] = pd.cut(train_data['age'], bins=5, labels=['Young', 'Mid-Young', 'Middle', 'Mid-Old', 'Old'])
+        sns.countplot(data=train_data, x='age_group', hue='y', ax=axes[i], palette="Set2")
+        axes[i].set_title(f"Term Deposit Subscription by Age Group")
+    else:
+        sns.countplot(data=train_data, x=feature, hue='y', ax=axes[i], palette="Set2")
+        axes[i].set_title(f"Term Deposit Subscription by {feature.capitalize()}")
+
+    axes[i].legend(title="Subscribed (y)", loc="upper right")
+
+# Remove any unused subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+plt.tight_layout()
+plt.show()
+
+# 羅吉斯回歸模型：選取 'age', 'balance', 'loan' 特徵
+X_train = train_data[['age', 'balance', 'loan']].copy()
+X_train['loan'] = X_train['loan'].apply(lambda x: 1 if x == 'yes' else 0)  # 將 'loan' 轉為二元變數
+y_train = train_data['y'].apply(lambda x: 1 if x == 'yes' else 0)         # 將 'y' 轉為二元變數
+
+X_test = test_data[['age', 'balance', 'loan']].copy()
+X_test['loan'] = X_test['loan'].apply(lambda x: 1 if x == 'yes' else 0)   # 測試集處理同樣轉換
+y_test = test_data['y'].apply(lambda x: 1 if x == 'yes' else 0)
+
+# 訓練模型
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# 測試模型
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+
+print("Logistic Regression Test Accuracy:", accuracy)
