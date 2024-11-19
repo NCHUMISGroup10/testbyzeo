@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# 1. 匯入資料
+train_data = pd.read_csv('/Users/elaine/Desktop/train.csv', delimiter=';')
+test_data = pd.read_csv('/Users/elaine/Desktop/test.csv', delimiter=';')
+
+# 2. 清理欄位名稱
+train_data.columns = train_data.columns.str.strip()
+test_data.columns = test_data.columns.str.strip()
+
+print("訓練集欄位名稱：", list(train_data.columns))
+print("測試集欄位名稱：", list(test_data.columns))
+
+# 3. 檢查缺失值
+print("缺失值檢查（訓練集）：")
+print(train_data.isnull().sum())
+print("缺失值檢查（測試集）：")
+print(test_data.isnull().sum())
+
+# 4. 特徵視覺化
+features = ['age', 'job', 'marital', 'education', 'loan']
+sns.set(style="whitegrid")
+
+# 將每個子圖單獨繪製，避免擠壓
+fig = plt.figure(figsize=(12, 30))  # 設置整體圖片大小
+for i, feature in enumerate(features):
+    ax = plt.subplot(len(features), 1, i + 1)  # 每個特徵單獨一行
+    if feature == 'age':  # 對 'age' 分箱處理
+        train_data['age_group'] = pd.cut(train_data['age'], bins=5, labels=['Young', 'Mid-Young', 'Middle', 'Mid-Old', 'Old'])
+        sns.countplot(data=train_data, x='age_group', hue='y', ax=ax, palette="Set2")
+        ax.set_title(f"Term Deposit Subscription by Age Group", fontsize=16, pad=20)  # 調整標題距離
+    else:
+        sns.countplot(data=train_data, x=feature, hue='y', ax=ax, palette="Set2")
+        ax.set_title(f"Term Deposit Subscription by {feature.capitalize()}", fontsize=16, pad=20)  # 調整標題距離
+    ax.legend(title="Subscribed (y)", loc="upper right")
+    ax.tick_params(axis='x', rotation=45)  # 調整 X 軸標籤角度
+
+# 調整整體布局，增加子圖之間的距離
+plt.tight_layout(h_pad=3)
+plt.savefig('/Users/elaine/Desktop/term_deposit_subscription_improved.png', dpi=300, bbox_inches='tight')  # 保存高解析度圖片
+plt.show()
+
+# 5. 特徵選擇與資料處理
+X_train = train_data[['age', 'balance', 'loan']].copy()
+X_train['loan'] = X_train['loan'].apply(lambda x: 1 if x == 'yes' else 0)  # 將 'loan' 轉為二元變數
+y_train = train_data['y'].apply(lambda x: 1 if x == 'yes' else 0)         # 將 'y' 轉為二元變數
+
+X_test = test_data[['age', 'balance', 'loan']].copy()
+X_test['loan'] = X_test['loan'].apply(lambda x: 1 if x == 'yes' else 0)
+y_test = test_data['y'].apply(lambda x: 1 if x == 'yes' else 0)
+
+# 6. 羅吉斯回歸模型訓練與測試
+model = LogisticRegression()
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+# 7. 測試準確度
+accuracy = accuracy_score(y_test, y_pred)
+print("Logistic Regression Test Accuracy:", accuracy)
